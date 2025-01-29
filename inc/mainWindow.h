@@ -23,9 +23,10 @@ private:
     void OnChooseProcess(wxCommandEvent& event);
     void OnEveryTick(wxTimerEvent& event);
     void OnClose(wxCloseEvent& event);
-
     void OnHelp(wxCommandEvent& event);
     void OnAbout(wxCommandEvent& event);
+    void OnLeftDown(wxMouseEvent& event);
+    void OnRightDown(wxMouseEvent& event);
 
     void _AutoFindGame();
 
@@ -34,14 +35,17 @@ protected:
     wxTextCtrl* _refresh_key_1;
     wxTextCtrl* _refresh_key_2;
     wxTextCtrl* _refresh_key_3;
+    wxButton* _SetKeyButton;
     wxTextCtrl* _intervalValue;
     wxButton* _SetIntervalButton;
     wxCheckBox* _AutoRefreshCheckBox;
     wxStaticText* _NextKeyText;
     wxStaticText* _MaxSizeText;
     wxStaticText* _IndexListText;
-    wxMenuBar* MenuBar;
+    wxMenuBar* _MenuBar;
     wxMenu* _ProcessMenu;
+    wxMenuItem* _chooseGame;
+    wxMenuItem* _menuExit;
     wxMenu* _SettingsMenu;
     wxMenu* _menuHelp;
     wxMenu* _menuAbout;
@@ -54,14 +58,14 @@ protected:
 
     // 隔一段时间检测，用于自动刷新
     std::unique_ptr<wxTimer> _auto_refresh_timer;
-
     // 每帧检测，用于按键刷新
     std::unique_ptr<wxTimer> _key_refresh_timer;
 
-    std::vector<int> _RefreshKeys;
+    std::vector<int> _refreshKeys;
     int _interval = 100;
     AnimationArrayList _monitor;
     HWND _hWnd;
+    bool _isPaused;
 
 public:
     mainWindow(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style);
@@ -73,24 +77,24 @@ public:
 
 enum {
     ID_KEY_REFRESH_TIMER = 0,
-    ID_AUTO_REFRESH_TIMER = 1,
-    ID_CURRENT_LIST = 2,
-    ID_DEAD_LIST = 3,
-    ID_SELECT_PROCESS = 4,
-    ID_KEY_1 = 5,
-    ID_KEY_2 = 6,
-    ID_KEY_3 = 7,
-    ID_SET_KEYS_BUTTON = 8,
-    ID_INTERVAL_VALUE = 9,
-    ID_SET_INTERVAL = 10,
-    ID_AUTO_REFRESH_CHECK_BOX = 11,
-    ID_NEXT_KEY = 12,
-    ID_MAX_SIZE = 13,
-    ID_INDEX_LIST = 14,
-    ID_CURRENT_TEXT = 15,
-    ID_DEAD_TEXT = 16,
-    ID_CHOOSE_CURRENT = 17,
-    ID_CHOOSE_DEAD = 18,
+    ID_AUTO_REFRESH_TIMER,
+    ID_CURRENT_LIST,
+    ID_DEAD_LIST,
+    ID_SELECT_PROCESS ,
+    ID_KEY_1 ,
+    ID_KEY_2 ,
+    ID_KEY_3 ,
+    ID_SET_KEYS_BUTTON ,
+    ID_INTERVAL_VALUE ,
+    ID_SET_INTERVAL ,
+    ID_AUTO_REFRESH_CHECK_BOX ,
+    ID_NEXT_KEY ,
+    ID_MAX_SIZE ,
+    ID_INDEX_LIST ,
+    ID_CURRENT_TEXT ,
+    ID_DEAD_TEXT ,
+    ID_CHOOSE_CURRENT ,
+    ID_CHOOSE_DEAD,
 };
 
 #endif //!__MAINWINDOW_H__

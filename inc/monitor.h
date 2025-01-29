@@ -9,6 +9,7 @@
 #define __MONITOR_H__
 
 #include "process.h"
+
 #include <Windows.h>
 #include <wx/listctrl.h>
 #include <wx/sizer.h>

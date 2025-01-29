@@ -23,6 +23,8 @@ const char* GetLoopTimeName(DWORD theLoopType)
 const char* GetReanimationName(DWORD theReanimationType)
 {
     switch (theReanimationType) {
+    case -1:
+        return "NULL";
     case 0:
         return "LOADBAR_SPROUT";
     case 1:
@@ -335,10 +337,15 @@ void AnimationArrayList::PrintList(wxListCtrl* list1, wxListCtrl* list2)
         else
             OutReanimation(i, aArrayPtr, list2);
     }
+
+    CloseHandle(hProcess);
 }
 
 void AnimationArrayList::OutReanimation(int index, DWORD& theAddress, wxListCtrl* list)
 {
+    if (!list->IsShown())
+        return;
+
     DWORD aID, aLoopType, aType;
     float aTime, aRate;
     ReadProcessMemory(hProcess, (LPVOID)(theAddress + 0x9C), &aID, 4, &aBuffer);
@@ -351,8 +358,8 @@ void AnimationArrayList::OutReanimation(int index, DWORD& theAddress, wxListCtrl
     list->SetItem(itemIndex, 1, wxString::Format("0x%04X", aID >> 16));
     list->SetItem(itemIndex, 2, wxString::Format("%6.3ff", aTime));
     list->SetItem(itemIndex, 3, wxString::Format("%6.3ff", aRate));
-    list->SetItem(itemIndex, 4, wxString::FromUTF8(GetLoopTimeName(aLoopType)));
-    list->SetItem(itemIndex, 5, wxString::FromUTF8(GetReanimationName(aType)));
+    list->SetItem(itemIndex, 4, GetLoopTimeName(aLoopType));
+    list->SetItem(itemIndex, 5, GetReanimationName(aType));
 }
 
 bool AnimationArrayList::DataArrayGetNextIndex(DWORD& theCurrent, DWORD theMax)
@@ -404,7 +411,7 @@ void AnimationArrayList::DisplayStatus(wxStaticText* NextKeyLable, wxStaticText*
 
 void AnimationArrayList::SetProcess(HWND hWnd)
 {
-    _hWnd = hWnd;
+    this->_hWnd = hWnd;
 }
 
 bool AnimationArrayList::IsValid()

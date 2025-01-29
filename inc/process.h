@@ -29,8 +29,6 @@ public:
 
     ~ProcessChoose();
 
-    static wxString GetWindowTitle(HWND hWnd);
-
     template <typename T, typename... Args>
     static T ReadMemory(HANDLE hProcess, Args... args)
     {

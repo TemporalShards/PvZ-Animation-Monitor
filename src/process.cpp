@@ -5,24 +5,20 @@
  * @Description：Finding process
  */
 #include "process.h"
+#include "util.h"
+
 #include <Psapi.h>
 #include <Shlwapi.h>
 #include <wx/button.h>
 #include <wx/msgdlg.h>
 #include <wx/sizer.h>
 
-wxString ProcessChoose::GetWindowTitle(HWND hWnd)
-{
-    TCHAR title[256];
-    if (GetWindowText(hWnd, title, sizeof(title) / sizeof(TCHAR)) > 0) {
-        return wxString(title);
-    }
-    return wxEmptyString;
-}
-
 bool IsPvZProcess(HWND hWnd)
 {
     if (hWnd == NULL)
+        return false;
+
+    if (!IsWindowVisible(hWnd))
         return false;
 
     DWORD pid = 0;
@@ -35,7 +31,7 @@ bool IsPvZProcess(HWND hWnd)
         return false;
 
     if (ProcessChoose::ReadMemory<int>(handle, 0x45DC55) == 300 && ProcessChoose::ReadMemory<int>(handle, 0x45E445) == 4000
-        && ProcessChoose::GetWindowTitle(hWnd) == "Plants vs. Zombies") {
+        && GetWindowTitle(hWnd) == "Plants vs. Zombies") {
         CloseHandle(handle);
         return true;
     }
@@ -73,7 +69,7 @@ BOOL CALLBACK ProcessChoose::_EnumWindowsProc(HWND hWnd, LPARAM lParam)
                 return TRUE;
         }
 
-    windowEnum->_windowsInfo.emplace_back(info);
+    windowEnum->_windowsInfo.push_back(info);
 
     return TRUE;
 }

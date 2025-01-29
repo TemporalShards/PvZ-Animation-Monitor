@@ -2,7 +2,7 @@
  * @Author: TemporalShards
  * @Date: 2025-01-24 21:38:06
  * @Last Modified by: TemporalShards
- * @Description：按键相关
+ * @Description：
  */
  #pragma once
 #ifndef __UTIL_H__
@@ -52,6 +52,15 @@ inline bool GetIsKeysDown(HWND hWnd, const std::vector<int>& keys, bool isRequir
             return false;
     }
     return true;
+}
+
+inline wxString GetWindowTitle(HWND hWnd)
+{
+    TCHAR title[256];
+    if (GetWindowText(hWnd, title, sizeof(title) / sizeof(TCHAR)) > 0) 
+        return wxString(title);
+    
+    return wxEmptyString;
 }
 
 #endif //!__UTIL_H__

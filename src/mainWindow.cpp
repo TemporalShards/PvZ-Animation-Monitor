@@ -15,11 +15,10 @@ mainWindow::mainWindow(wxWindow* parent, wxWindowID id, const wxString& title, c
     this->SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHTTEXT));
 
     _InfoBar = this->CreateStatusBar(1, wxSTB_SIZEGRIP, wxID_ANY);
-    wxBoxSizer* GlobalSizer;
-    GlobalSizer = new wxBoxSizer(wxVERTICAL);
 
-    wxBoxSizer* KeySizer;
-    KeySizer = new wxBoxSizer(wxHORIZONTAL);
+    wxBoxSizer* GlobalSizer = new wxBoxSizer(wxVERTICAL);
+
+    wxBoxSizer* KeySizer = new wxBoxSizer(wxHORIZONTAL);
 
     wxStaticText* SetRefreshKeyText = new wxStaticText(this, wxID_ANY, wxT("设置刷新快捷键"), wxDefaultPosition, wxDefaultSize, 0);
     SetRefreshKeyText->Wrap(-1);
@@ -42,13 +41,12 @@ mainWindow::mainWindow(wxWindow* parent, wxWindowID id, const wxString& title, c
     _refresh_key_3 = new wxTextCtrl(this, ID_KEY_3, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0);
     KeySizer->Add(_refresh_key_3, 0, wxALL, 5);
 
-    wxButton* SetKeyButton = new wxButton(this, ID_SET_KEYS_BUTTON, wxT("设置"), wxDefaultPosition, wxDefaultSize, 0);
-    KeySizer->Add(SetKeyButton, 0, wxALL, 5);
+    _SetKeyButton = new wxButton(this, ID_SET_KEYS_BUTTON, wxT("设置"), wxDefaultPosition, wxDefaultSize, 0);
+    KeySizer->Add(_SetKeyButton, 0, wxALL, 5);
 
     GlobalSizer->Add(KeySizer, 1, wxEXPAND, 5);
 
-    wxBoxSizer* SetIntervalSizer;
-    SetIntervalSizer = new wxBoxSizer(wxHORIZONTAL);
+    wxBoxSizer* SetIntervalSizer = new wxBoxSizer(wxHORIZONTAL);
 
     wxStaticText* intervalLabel = new wxStaticText(this, wxID_ANY, wxT("设置刷新间隔(cs)"), wxDefaultPosition, wxDefaultSize, 0);
     intervalLabel->Wrap(-1);
@@ -65,8 +63,7 @@ mainWindow::mainWindow(wxWindow* parent, wxWindowID id, const wxString& title, c
 
     GlobalSizer->Add(SetIntervalSizer, 1, wxEXPAND, 5);
 
-    wxBoxSizer* NextKeySizer;
-    NextKeySizer = new wxBoxSizer(wxHORIZONTAL);
+    wxBoxSizer* NextKeySizer = new wxBoxSizer(wxHORIZONTAL);
 
     wxStaticText* NextKeyStaticText = new wxStaticText(this, wxID_ANY, "Next Key:", wxDefaultPosition, wxDefaultSize, 0);
     NextKeyStaticText->Wrap(-1);
@@ -121,20 +118,18 @@ mainWindow::mainWindow(wxWindow* parent, wxWindowID id, const wxString& title, c
 
     this->Layout();
 
-    MenuBar = new wxMenuBar(0);
+    _MenuBar = new wxMenuBar;
     _ProcessMenu = new wxMenu;
 
-    wxMenuItem* ChooseGame;
-    ChooseGame = new wxMenuItem(_ProcessMenu, ID_SELECT_PROCESS, wxT("手动选择进程"), wxT("手动选择进程"), wxITEM_NORMAL);
-    _ProcessMenu->Append(ChooseGame);
+    _chooseGame = new wxMenuItem(_ProcessMenu, ID_SELECT_PROCESS, wxT("手动选择进程"), wxT("手动选择进程"), wxITEM_NORMAL);
+    _ProcessMenu->Append(_chooseGame);
 
     _ProcessMenu->AppendSeparator();
 
-    wxMenuItem* menuExit;
-    menuExit = new wxMenuItem(_ProcessMenu, wxID_EXIT, wxT("退出"), wxT("关闭本程序"), wxITEM_NORMAL);
-    _ProcessMenu->Append(menuExit);
+    _menuExit = new wxMenuItem(_ProcessMenu, wxID_EXIT, wxT("退出"), wxT("关闭本程序"), wxITEM_NORMAL);
+    _ProcessMenu->Append(_menuExit);
 
-    MenuBar->Append(_ProcessMenu, wxT("程序"));
+    _MenuBar->Append(_ProcessMenu, wxT("程序"));
 
     _SettingsMenu = new wxMenu;
 
@@ -148,34 +143,33 @@ mainWindow::mainWindow(wxWindow* parent, wxWindowID id, const wxString& title, c
     _SettingsMenu->Append(_chooseDead);
     _chooseDead->Check(true);
 
-    // _SettingsMenu->AppendSeparator();
-    // wxMenuItem* function;
-    // function = new wxMenuItem(_SettingsMenu, wxID_ANY, wxString(wxT("未来可能会加的功能")), wxEmptyString, wxITEM_NORMAL);
-    // _SettingsMenu->Append(function);
-
-    MenuBar->Append(_SettingsMenu, wxT("设置"));
+    _MenuBar->Append(_SettingsMenu, wxT("设置"));
 
     _menuHelp = new wxMenu;
-    MenuBar->Append(_menuHelp, wxT("帮助"));
+    _MenuBar->Append(_menuHelp, wxT("帮助"));
     _menuHelp->Append(wxID_HELP);
 
     _menuAbout = new wxMenu;
-    MenuBar->Append(_menuAbout, wxT("关于"));
+    _MenuBar->Append(_menuAbout, wxT("关于"));
     _menuAbout->Append(wxID_ABOUT);
 
-    this->SetMenuBar(MenuBar);
+    this->SetMenuBar(_MenuBar);
 
     this->Centre(wxBOTH);
 
-    SetKeyButton->Bind(wxEVT_BUTTON, &mainWindow::OnSetRefreshKeys, this, SetKeyButton->GetId());
+    _SetKeyButton->Bind(wxEVT_BUTTON, &mainWindow::OnSetRefreshKeys, this, _SetKeyButton->GetId());
     _SetIntervalButton->Bind(wxEVT_BUTTON, &mainWindow::OnSetInterval, this, _SetIntervalButton->GetId());
     _AutoRefreshCheckBox->Bind(wxEVT_CHECKBOX, &mainWindow::OnRefreshCheckBox, this, _AutoRefreshCheckBox->GetId());
     Bind(wxEVT_MENU, &mainWindow::OnShowCurrenCheck, this, _chooseCurrent->GetId());
     Bind(wxEVT_MENU, &mainWindow::OnShowDeadCheck, this, _chooseDead->GetId());
-    Bind(wxEVT_MENU, [=, this](wxCommandEvent&) { Close(true); }, menuExit->GetId());
-    Bind(wxEVT_MENU, &mainWindow::OnChooseProcess, this, ChooseGame->GetId());
+    Bind(wxEVT_MENU, [=, this](wxCommandEvent&) { Close(true); }, _menuExit->GetId());
+    Bind(wxEVT_MENU, &mainWindow::OnChooseProcess, this, _chooseGame->GetId());
     Bind(wxEVT_MENU, &mainWindow::OnHelp, this, wxID_HELP);
     Bind(wxEVT_MENU, &mainWindow::OnAbout, this, wxID_ABOUT);
+    _currentList->Bind(wxEVT_LEFT_DOWN, &mainWindow::OnLeftDown, this);
+    _currentList->Bind(wxEVT_RIGHT_DOWN, &mainWindow::OnRightDown, this);
+    _deadList->Bind(wxEVT_LEFT_DOWN, &mainWindow::OnLeftDown, this);
+    _deadList->Bind(wxEVT_RIGHT_DOWN, &mainWindow::OnRightDown, this);
 
     _auto_refresh_timer = std::make_unique<wxTimer>(this, ID_AUTO_REFRESH_TIMER);
     _key_refresh_timer = std::make_unique<wxTimer>(this, ID_KEY_REFRESH_TIMER);
@@ -185,6 +179,8 @@ mainWindow::mainWindow(wxWindow* parent, wxWindowID id, const wxString& title, c
 
 mainWindow::~mainWindow()
 {
+    _auto_refresh_timer->Stop();
+    _key_refresh_timer->Stop();
 }
 
 void mainWindow::OnSetRefreshKeys(wxCommandEvent& event)
@@ -192,9 +188,9 @@ void mainWindow::OnSetRefreshKeys(wxCommandEvent& event)
     auto key1 = _refresh_key_1->GetValue();
     auto key2 = _refresh_key_2->GetValue();
     auto key3 = _refresh_key_3->GetValue();
-    _RefreshKeys.clear();
+    _refreshKeys.clear();
     wxString info = wxT("SetRefreshKeys: 快捷键 ");
-    for (const auto key : {key1, key2, key3}) {
+    for (const auto& key : {key1, key2, key3}) {
         if (key.empty())
             continue;
 
@@ -203,10 +199,10 @@ void mainWindow::OnSetRefreshKeys(wxCommandEvent& event)
             wxMessageBox(wxString::Format(wxT("未知的按键 %s , 已自动忽略"), _key), wxT("快捷键绑定"), wxOK | wxICON_INFORMATION);
             continue;
         }
-        _RefreshKeys.push_back(VirtualKeyMap.at(_key));
+        _refreshKeys.push_back(VirtualKeyMap.at(_key));
         info += key + " ";
     }
-    if (_RefreshKeys.empty()) {
+    if (_refreshKeys.empty()) {
         info.clear();
         wxMessageBox(wxT("快捷键绑定失败"), wxT("快捷键绑定"));
         return;
@@ -231,6 +227,9 @@ void mainWindow::OnSetInterval(wxCommandEvent& event)
 void mainWindow::OnTimer(wxTimerEvent& event)
 {
     // EveryTick()中每帧都检测了pvz进程，这里不用重复检测
+    if (_isPaused)
+        return;
+
     if (!_AutoRefreshCheckBox->IsChecked())
         return;
 
@@ -238,15 +237,15 @@ void mainWindow::OnTimer(wxTimerEvent& event)
     if (_chooseCurrent->IsChecked()) {
         _currentList->Show();
         _currentList->DeleteAllItems();
-    } else {
+    } else 
         _currentList->Hide();
-    }
+    
     if (_chooseDead->IsChecked()) {
         _deadList->Show();
         _deadList->DeleteAllItems();
-    } else {
+    } else 
         _deadList->Hide();
-    }
+    
     _monitor.PrintList(_currentList, _deadList);
 }
 
@@ -282,7 +281,7 @@ void mainWindow::_AutoFindGame()
 
     if (IsPvZProcess(hWnd)) {
         _hWnd = hWnd;
-        wxMessageBox(wxT("已找到PvZ进程"), wxT("PvZ Animation Monitor选择进程"));
+        wxMessageBox(wxT("已找到PvZ进程"), wxT("PvZ Animation Monitor自动寻找进程"));
         SetStatusText(wxT("已找到PvZ进程"));
     }
 }
@@ -309,7 +308,12 @@ void mainWindow::OnRefreshCheckBox(wxCommandEvent& event)
 
 void mainWindow::OnEveryTick(wxTimerEvent& event)
 {
-    _SetIntervalButton->Enable(_AutoRefreshCheckBox->IsChecked());
+    /*if (_isPaused)
+        return;*/
+
+    if (_SetIntervalButton->IsEnabled() != _AutoRefreshCheckBox->IsChecked())
+        _SetIntervalButton->Enable(_AutoRefreshCheckBox->IsChecked());
+
     if (!IsPvZProcess(_hWnd)) {
         _AutoFindGame();
         return;
@@ -318,7 +322,7 @@ void mainWindow::OnEveryTick(wxTimerEvent& event)
         _monitor.SetProcess(_hWnd);
         return;
     }
-    if (GetIsKeysDown(_hWnd, _RefreshKeys)) {
+    if (GetIsKeysDown(_hWnd, _refreshKeys)) {
         _monitor.DisplayStatus(_NextKeyText, _MaxSizeText, _IndexListText);
         if (_chooseCurrent->IsChecked()) {
             _currentList->Show();
@@ -343,20 +347,44 @@ void mainWindow::OnClose(wxCloseEvent& event)
     event.Skip();
 }
 
+void mainWindow::OnLeftDown(wxMouseEvent& event)
+{
+    wxListCtrl* listCtrl = dynamic_cast<wxListCtrl*>(event.GetEventObject());
+    if (listCtrl) {
+        auto item = this->HitTest(event.GetPosition());
+        if (item == wxHT_WINDOW_INSIDE) {
+            _isPaused = true;
+        }
+    }
+}
+
+void mainWindow::OnRightDown(wxMouseEvent& event)
+{
+    wxListCtrl* listCtrl = dynamic_cast<wxListCtrl*>(event.GetEventObject());
+    if (listCtrl) {
+        auto item = this->HitTest(event.GetPosition());
+        if (item == wxHT_WINDOW_INSIDE) {
+            _isPaused = false;
+        }
+    }
+}
+
 void mainWindow::OnHelp(wxCommandEvent& event)
 {
-    wxMessageBox(LR"(
-    为pvz英文原版动画监测写的GUI界面，添加了若干小功能：
+    wxMessageBox(LR"(为pvz英文原版动画监测写的GUI界面，添加了若干小功能：
 1.手动选择进程，用于支持多开pvz，不支持大部分改版及中文版，年度版（即使找到了游戏也不能保证兼容）；
 
 2.选择显示Current和Dead列表，默认二者均显示，可在程序菜单栏上的“设置”中取消勾选；
 
 3.在自动刷新模式下，设置刷新间隔，单位为cs，不建议将设置太小间隔，一是CPU占用可能会过高，二是人眼也难以获取信息。
-    参考间隔：恶魂的动画监测刷新间隔为10cs，这也是本程序的默认刷新间隔；
+  参考间隔：恶魂的动画监测刷新间隔为10cs，这也是本程序的默认刷新间隔；
 
 4.快捷键绑定动画内存列表的刷新，支持键盘上的大部分按键以及组合键，不区分大小写，但不能有汉字和特殊字符；
-    例如想绑定Ctrl+Shift+Z，即按下Ctrl+Shift+Z时刷新一次列表，三个输入框从左到右依次键入ctrl, shift, z即可；
-    注意组合键最多绑定三个，三个输入框不必全填满, 当且仅当pvz窗口为顶层窗口时按下按键才会刷新列表。
+  例如想绑定Ctrl+Shift+Z，即按下Ctrl+Shift+Z时刷新一次列表，三个输入框从左到右依次键入ctrl, shift, z即可；
+  注意组合键最多绑定三个，三个输入框不必全填满, 当且仅当pvz窗口为顶层窗口时按下按键才会刷新列表。
+
+5.自动刷新模式下，当鼠标左键在两个列表内任意位置点击时，暂停刷新；当鼠标右键在两个列表内任意位置点击时，恢复刷新；
+  按键刷新不受影响。
 )",
         wxT("PvZ Animation Monitor帮助"));
 }
@@ -365,10 +393,10 @@ void mainWindow::OnAbout(wxCommandEvent& event)
 {
     wxAboutDialogInfo info;
     info.SetName("PvZ Animation Monitor");
-    info.SetVersion("v1.0.0");
+    info.SetVersion("v1.0.1");
     info.SetDescription(LR"(
-日期: 2025/01/28 14:28:00
-工具链: Visual Studio 2022, CMake 3.7, wxWidgets 3.2.6
+日期: 2025/01/29 17:31:00
+工具链: Visual Studio 2022, CMake, wxWidgets 3.2.6
 鸣谢: Ghastasaucey
 所有源代码位于: )");
     info.SetLicence(LR"(
@@ -391,6 +419,6 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FO
 DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 )");
-    info.SetWebSite("https://github.com/TemporalShards/PvZ-Animation-Monitor/tree/main");
+    info.SetWebSite("https://github.com/TemporalShards/PvZ-Animation-Monitor");
     wxAboutBox(info, this);
 }
