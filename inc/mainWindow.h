@@ -10,7 +10,7 @@
 
 #include <wx/wx.h>
 
-#include "monitor.h"
+#include "process.h"
 
 class mainWindow : public wxFrame {
 private:
@@ -29,8 +29,13 @@ private:
     void OnRightDown(wxMouseEvent& event);
 
     void _AutoFindGame();
+    void _OutReanimation(int index, DWORD& theAddress, wxListCtrl* list);
+    bool _DataArrayGetNextIndex(DWORD& theCurrent, DWORD theMax);
+    void _PrintList();
+    void _DisplayStatus();
+    bool _IsValid();
+    void _Init(HWND hWnd = NULL);
 
-protected:
     wxStatusBar* _InfoBar;
     wxTextCtrl* _refresh_key_1;
     wxTextCtrl* _refresh_key_2;
@@ -63,9 +68,14 @@ protected:
 
     std::vector<int> _refreshKeys;
     int _interval = 100;
-    AnimationArrayList _monitor;
-    HWND _hWnd;
     bool _isPaused;
+
+    HWND _hWnd;
+    HANDLE hProcess;
+    SIZE_T aBuffer;
+    DWORD aBase, aEffect, aDataArray, aReanimationArray;
+    DWORD aNextKey, aNextIndex, aMaxIndex;
+    bool aIsDead[1024];
 
 public:
     mainWindow(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style);
@@ -80,20 +90,20 @@ enum {
     ID_AUTO_REFRESH_TIMER,
     ID_CURRENT_LIST,
     ID_DEAD_LIST,
-    ID_SELECT_PROCESS ,
-    ID_KEY_1 ,
-    ID_KEY_2 ,
-    ID_KEY_3 ,
-    ID_SET_KEYS_BUTTON ,
-    ID_INTERVAL_VALUE ,
-    ID_SET_INTERVAL ,
-    ID_AUTO_REFRESH_CHECK_BOX ,
-    ID_NEXT_KEY ,
-    ID_MAX_SIZE ,
-    ID_INDEX_LIST ,
-    ID_CURRENT_TEXT ,
-    ID_DEAD_TEXT ,
-    ID_CHOOSE_CURRENT ,
+    ID_SELECT_PROCESS,
+    ID_KEY_1,
+    ID_KEY_2,
+    ID_KEY_3,
+    ID_SET_KEYS_BUTTON,
+    ID_INTERVAL_VALUE,
+    ID_SET_INTERVAL,
+    ID_AUTO_REFRESH_CHECK_BOX,
+    ID_NEXT_KEY,
+    ID_MAX_SIZE,
+    ID_INDEX_LIST,
+    ID_CURRENT_TEXT,
+    ID_DEAD_TEXT,
+    ID_CHOOSE_CURRENT,
     ID_CHOOSE_DEAD,
 };
 

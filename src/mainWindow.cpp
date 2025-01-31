@@ -175,6 +175,7 @@ mainWindow::mainWindow(wxWindow* parent, wxWindowID id, const wxString& title, c
     _key_refresh_timer = std::make_unique<wxTimer>(this, ID_KEY_REFRESH_TIMER);
     _auto_refresh_timer->Start(_interval);
     _key_refresh_timer->Start(10);
+    _Init();
 }
 
 mainWindow::~mainWindow()
@@ -226,27 +227,27 @@ void mainWindow::OnSetInterval(wxCommandEvent& event)
 
 void mainWindow::OnTimer(wxTimerEvent& event)
 {
-    // EveryTick()中每帧都检测了pvz进程，这里不用重复检测
+    // OnEveryTick()中每帧都检测了pvz进程，这里不用重复检测
     if (_isPaused)
         return;
 
     if (!_AutoRefreshCheckBox->IsChecked())
         return;
 
-    _monitor.DisplayStatus(_NextKeyText, _MaxSizeText, _IndexListText);
     if (_chooseCurrent->IsChecked()) {
         _currentList->Show();
         _currentList->DeleteAllItems();
-    } else 
+    } else
         _currentList->Hide();
-    
+
     if (_chooseDead->IsChecked()) {
         _deadList->Show();
         _deadList->DeleteAllItems();
-    } else 
+    } else
         _deadList->Hide();
-    
-    _monitor.PrintList(_currentList, _deadList);
+
+    _PrintList();
+    _DisplayStatus();
 }
 
 void mainWindow::OnShowCurrenCheck(wxCommandEvent& event)
@@ -273,29 +274,35 @@ void mainWindow::OnShowDeadCheck(wxCommandEvent& event)
 
 void mainWindow::_AutoFindGame()
 {
-    auto hWnd = ::FindWindow(L"MainWindow", L"Plants vs. Zombies");
+    if (_IsValid())
+        return;
+
+    HWND hWnd = ::FindWindow(NULL, L"Plants vs. Zombies");
     if (hWnd == NULL) {
-        SetStatusText(wxT("未找到PvZ进程"));
+        _InfoBar->SetStatusText(wxT("未找到PvZ进程"));
         return;
     }
 
     if (IsPvZProcess(hWnd)) {
-        _hWnd = hWnd;
+        _Init(hWnd);
         wxMessageBox(wxT("已找到PvZ进程"), wxT("PvZ Animation Monitor自动寻找进程"));
-        SetStatusText(wxT("已找到PvZ进程"));
+        _InfoBar->SetStatusText(wxT("已找到PvZ进程"));
     }
 }
 
 void mainWindow::OnChooseProcess(wxCommandEvent& event)
 {
-    std::unique_ptr<ProcessChoose> dlg = std::make_unique<ProcessChoose>(nullptr);
+    _key_refresh_timer->Stop();
+    _auto_refresh_timer->Stop();
+    auto dlg = std::make_unique<ProcessChoose>(nullptr);
     int result = dlg->ShowModal();
     if (result == wxID_OK) {
-        _hWnd = dlg->GetSelectedHWND();
-        _monitor.SetProcess(_hWnd);
+        _Init(dlg->GetSelectedHWND());
         wxMessageBox(wxT("已找到PvZ进程"), wxT("PvZ Animation Monitor选择进程"));
     }
     dlg->Destroy();
+    _key_refresh_timer->Start(10);
+    _auto_refresh_timer->Start(_interval);
 }
 
 void mainWindow::OnRefreshCheckBox(wxCommandEvent& event)
@@ -308,35 +315,28 @@ void mainWindow::OnRefreshCheckBox(wxCommandEvent& event)
 
 void mainWindow::OnEveryTick(wxTimerEvent& event)
 {
-    /*if (_isPaused)
-        return;*/
-
     if (_SetIntervalButton->IsEnabled() != _AutoRefreshCheckBox->IsChecked())
         _SetIntervalButton->Enable(_AutoRefreshCheckBox->IsChecked());
 
-    if (!IsPvZProcess(_hWnd)) {
+    if (!_IsValid()) {
         _AutoFindGame();
         return;
     }
-    if (!_monitor.IsValid()) {
-        _monitor.SetProcess(_hWnd);
-        return;
-    }
     if (GetIsKeysDown(_hWnd, _refreshKeys)) {
-        _monitor.DisplayStatus(_NextKeyText, _MaxSizeText, _IndexListText);
         if (_chooseCurrent->IsChecked()) {
             _currentList->Show();
             _currentList->DeleteAllItems();
-        } else 
+        } else
             _currentList->Hide();
-        
+
         if (_chooseDead->IsChecked()) {
             _deadList->Show();
             _deadList->DeleteAllItems();
-        } else 
+        } else
             _deadList->Hide();
-        
-        _monitor.PrintList(_currentList, _deadList);
+
+        _PrintList();
+        _DisplayStatus();
     }
 }
 
@@ -369,6 +369,123 @@ void mainWindow::OnRightDown(wxMouseEvent& event)
     }
 }
 
+bool mainWindow::_IsValid()
+{
+    if (!IsPvZProcess(_hWnd))
+        return false;
+
+    DWORD dwPid = 0;
+    ::GetWindowThreadProcessId(_hWnd, &dwPid);
+    if (dwPid == -1)
+        return false;
+
+    hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, dwPid);
+    return hProcess;
+}
+
+void mainWindow::_Init(HWND hWnd)
+{
+    _hWnd = hWnd;
+    hProcess = 0;
+    aBuffer = 0;
+    aBase = 0, aEffect = 0, aDataArray = 0, aReanimationArray = 0;
+    aNextKey = 0, aNextIndex = 0, aMaxIndex = 0;
+}
+
+void mainWindow::_DisplayStatus()
+{
+    if (!_IsValid()) {
+        _NextKeyText->SetLabel("unknown");
+        _MaxSizeText->SetLabel("unknown");
+        _IndexListText->SetLabel("unknown");
+        return;
+    }
+
+    ReadProcessMemory(hProcess, (LPVOID)(aDataArray + 0x14), &aNextKey, 4, &aBuffer);
+    ReadProcessMemory(hProcess, (LPVOID)(aDataArray + 0x4), &aMaxIndex, 4, &aBuffer);
+    ReadProcessMemory(hProcess, (LPVOID)(aDataArray + 0xC), &aNextIndex, 4, &aBuffer);
+    _NextKeyText->SetLabel(wxString::Format("0x%04X ", aNextKey));
+
+    std::vector<DWORD> indexList;
+    indexList.push_back(aNextIndex);
+    while (aNextIndex <= aMaxIndex) {
+        _DataArrayGetNextIndex(aNextIndex, aMaxIndex);
+        indexList.push_back(aNextIndex);
+    }
+    _MaxSizeText->SetLabel(wxString::Format("0x%04X ", aMaxIndex));
+
+    wxString str;
+    for (size_t i = 0; i < indexList.size(); ++i) {
+        str += wxString::Format("0x%04X", indexList[i]);
+        if (i < indexList.size() - 1)
+            str += ", ";
+        else
+            str += "... ";
+    }
+    _IndexListText->SetLabel(str);
+}
+
+void mainWindow::_PrintList()
+{
+    if (!_IsValid())
+        return;
+
+    ReadProcessMemory(hProcess, (LPVOID)0x006A9EC0, &aBase, 4, &aBuffer);
+    ReadProcessMemory(hProcess, (LPVOID)(aBase + 0x820), &aEffect, 4, &aBuffer);
+    ReadProcessMemory(hProcess, (LPVOID)(aEffect + 0x8), &aDataArray, 4, &aBuffer);
+
+    if (aBase == 0 || aEffect == 0 || aDataArray == 0) {
+        CloseHandle(hProcess);
+        return;
+    }
+    ReadProcessMemory(hProcess, (LPVOID)(aDataArray), &aReanimationArray, 4, &aBuffer);
+    DWORD aArrayPtr = aReanimationArray;
+    for (int i = 0; i < aMaxIndex; i++, aArrayPtr += 0xA0) {
+        ReadProcessMemory(hProcess, (LPVOID)(aArrayPtr + 0x14), &aIsDead[i], 1, &aBuffer);
+        if (!aIsDead[i])
+            _OutReanimation(i, aArrayPtr, _currentList);
+        else
+            _OutReanimation(i, aArrayPtr, _deadList);
+    }
+
+    CloseHandle(hProcess);
+}
+
+void mainWindow::_OutReanimation(int index, DWORD& theAddress, wxListCtrl* list)
+{
+    if (!list->IsShown())
+        return;
+
+    DWORD aID, aLoopType, aType;
+    float aTime, aRate;
+    ReadProcessMemory(hProcess, (LPVOID)(theAddress + 0x9C), &aID, 4, &aBuffer);
+    ReadProcessMemory(hProcess, (LPVOID)(theAddress + 0x0), &aType, 4, &aBuffer);
+    ReadProcessMemory(hProcess, (LPVOID)(theAddress + 0x4), &aTime, 4, &aBuffer);
+    ReadProcessMemory(hProcess, (LPVOID)(theAddress + 0x8), &aRate, 4, &aBuffer);
+    ReadProcessMemory(hProcess, (LPVOID)(theAddress + 0x10), &aLoopType, 4, &aBuffer);
+
+    long itemIndex = list->InsertItem(list->GetItemCount(), wxString::Format("0x%04X", index));
+    list->SetItem(itemIndex, 1, wxString::Format("0x%04X", aID >> 16));
+    list->SetItem(itemIndex, 2, wxString::Format("%6.3ff", aTime));
+    list->SetItem(itemIndex, 3, wxString::Format("%6.3ff", aRate));
+    list->SetItem(itemIndex, 4, LoopTimeName.contains(aLoopType) ? LoopTimeName.at(aLoopType) : "UNKNOWN");
+    list->SetItem(itemIndex, 5, ReanimationName.contains(aType) ? ReanimationName.at(aType) : "UNKNOWN");
+}
+
+bool mainWindow::_DataArrayGetNextIndex(DWORD& theCurrent, DWORD theMax)
+{
+    if (theCurrent >= theMax) {
+        theCurrent = theMax + 1;
+        return false;
+    }
+    ReadProcessMemory(hProcess, (LPVOID)(aReanimationArray + theCurrent * 0xA0 + 0x9C), &theCurrent, 4, &aBuffer);
+    if (theCurrent >= theMax) {
+        theCurrent = theMax + 1;
+        return false;
+    }
+    return true;
+}
+
 void mainWindow::OnHelp(wxCommandEvent& event)
 {
     wxMessageBox(LR"(为pvz英文原版动画监测写的GUI界面，添加了若干小功能：
@@ -393,9 +510,9 @@ void mainWindow::OnAbout(wxCommandEvent& event)
 {
     wxAboutDialogInfo info;
     info.SetName("PvZ Animation Monitor");
-    info.SetVersion("v1.0.1");
+    info.SetVersion("v1.0.2");
     info.SetDescription(LR"(
-日期: 2025/01/29 17:31:00
+日期: 2025/01/31 17:16:00
 工具链: Visual Studio 2022, CMake, wxWidgets 3.2.6
 鸣谢: Ghastasaucey
 所有源代码位于: )");
