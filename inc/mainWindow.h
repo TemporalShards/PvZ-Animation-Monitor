@@ -16,7 +16,6 @@ class mainWindow : public wxFrame {
 private:
     void OnSetRefreshKeys(wxCommandEvent& event);
     void OnSetInterval(wxCommandEvent& event);
-    void OnTimer(wxTimerEvent& event);
     void OnShowCurrenCheck(wxCommandEvent& event);
     void OnShowDeadCheck(wxCommandEvent& event);
     void OnRefreshCheckBox(wxCommandEvent& event);
@@ -61,14 +60,12 @@ private:
     wxMenuItem* _chooseCurrent;
     wxMenuItem* _chooseDead;
 
-    // 隔一段时间检测，用于自动刷新
-    std::unique_ptr<wxTimer> _auto_refresh_timer;
-    // 每帧检测，用于按键刷新
     std::unique_ptr<wxTimer> _key_refresh_timer;
 
     std::vector<int> _refreshKeys;
-    int _interval = 100;
+    int _interval = 10;
     bool _isPaused;
+    int _count = 0;
 
     HWND _hWnd;
     HANDLE hProcess;
@@ -86,8 +83,7 @@ public:
 };
 
 enum {
-    ID_KEY_REFRESH_TIMER = 0,
-    ID_AUTO_REFRESH_TIMER,
+    ID_EVERY_TICK_TIMER = 0,
     ID_CURRENT_LIST,
     ID_DEAD_LIST,
     ID_SELECT_PROCESS,

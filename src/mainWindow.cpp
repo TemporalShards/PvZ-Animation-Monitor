@@ -3,8 +3,15 @@
 #include <wx/aboutdlg.h>
 
 BEGIN_EVENT_TABLE(mainWindow, wxFrame)
-EVT_TIMER(ID_AUTO_REFRESH_TIMER, mainWindow::OnTimer)
-EVT_TIMER(ID_KEY_REFRESH_TIMER, mainWindow::OnEveryTick)
+EVT_TIMER(ID_EVERY_TICK_TIMER, mainWindow::OnEveryTick)
+EVT_BUTTON(ID_SET_KEYS_BUTTON, mainWindow::OnSetRefreshKeys)
+EVT_BUTTON(ID_SET_INTERVAL, mainWindow::OnSetInterval)
+EVT_CHECKBOX(ID_AUTO_REFRESH_CHECK_BOX, mainWindow::OnRefreshCheckBox)
+EVT_MENU(ID_CHOOSE_CURRENT, mainWindow::OnShowCurrenCheck)
+EVT_MENU(ID_CHOOSE_DEAD, mainWindow::OnShowDeadCheck)
+EVT_MENU(ID_SELECT_PROCESS, mainWindow::OnChooseProcess)
+EVT_MENU(wxID_HELP, mainWindow::OnHelp)
+EVT_MENU(wxID_ABOUT, mainWindow::OnAbout)
 EVT_CLOSE(mainWindow::OnClose)
 END_EVENT_TABLE()
 
@@ -98,19 +105,19 @@ mainWindow::mainWindow(wxWindow* parent, wxWindowID id, const wxString& title, c
 
     GlobalSizer->Add(_currentLable, 0, wxALL | wxEXPAND, 5);
     _currentList->InsertColumn(0, "Index", wxLIST_FORMAT_CENTER, 60);
-    _currentList->InsertColumn(1, "ID", wxLIST_FORMAT_CENTER, 60);
-    _currentList->InsertColumn(2, "Time", wxLIST_FORMAT_CENTER, 80);
-    _currentList->InsertColumn(3, "Rate", wxLIST_FORMAT_CENTER, 80);
-    _currentList->InsertColumn(4, "LoopType", wxLIST_FORMAT_CENTER, 160);
+    _currentList->InsertColumn(1, "ID", wxLIST_FORMAT_CENTER, 65);
+    _currentList->InsertColumn(2, "Time", wxLIST_FORMAT_CENTER, 75);
+    _currentList->InsertColumn(3, "Rate", wxLIST_FORMAT_CENTER, 75);
+    _currentList->InsertColumn(4, "LoopType", wxLIST_FORMAT_CENTER, 265);
     _currentList->InsertColumn(5, "Type", wxLIST_FORMAT_CENTER, 160);
     GlobalSizer->Add(_currentList, 1, wxEXPAND | wxALL, 5);
 
     GlobalSizer->Add(_deadLable, 0, wxALL | wxEXPAND, 5);
     _deadList->InsertColumn(0, "Index", wxLIST_FORMAT_CENTER, 60);
-    _deadList->InsertColumn(1, "ID", wxLIST_FORMAT_CENTER, 60);
-    _deadList->InsertColumn(2, "Time", wxLIST_FORMAT_CENTER, 80);
-    _deadList->InsertColumn(3, "Rate", wxLIST_FORMAT_CENTER, 80);
-    _deadList->InsertColumn(4, "LoopType", wxLIST_FORMAT_CENTER, 160);
+    _deadList->InsertColumn(1, "ID", wxLIST_FORMAT_CENTER, 65);
+    _deadList->InsertColumn(2, "Time", wxLIST_FORMAT_CENTER, 75);
+    _deadList->InsertColumn(3, "Rate", wxLIST_FORMAT_CENTER, 75);
+    _deadList->InsertColumn(4, "LoopType", wxLIST_FORMAT_CENTER, 265);
     _deadList->InsertColumn(5, "Type", wxLIST_FORMAT_CENTER, 160);
     GlobalSizer->Add(_deadList, 1, wxEXPAND | wxALL, 5);
 
@@ -157,30 +164,21 @@ mainWindow::mainWindow(wxWindow* parent, wxWindowID id, const wxString& title, c
 
     this->Centre(wxBOTH);
 
-    _SetKeyButton->Bind(wxEVT_BUTTON, &mainWindow::OnSetRefreshKeys, this, _SetKeyButton->GetId());
-    _SetIntervalButton->Bind(wxEVT_BUTTON, &mainWindow::OnSetInterval, this, _SetIntervalButton->GetId());
-    _AutoRefreshCheckBox->Bind(wxEVT_CHECKBOX, &mainWindow::OnRefreshCheckBox, this, _AutoRefreshCheckBox->GetId());
-    Bind(wxEVT_MENU, &mainWindow::OnShowCurrenCheck, this, _chooseCurrent->GetId());
-    Bind(wxEVT_MENU, &mainWindow::OnShowDeadCheck, this, _chooseDead->GetId());
+    _SetIntervalButton->Enable(_AutoRefreshCheckBox->IsChecked());
+
     Bind(wxEVT_MENU, [=, this](wxCommandEvent&) { Close(true); }, _menuExit->GetId());
-    Bind(wxEVT_MENU, &mainWindow::OnChooseProcess, this, _chooseGame->GetId());
-    Bind(wxEVT_MENU, &mainWindow::OnHelp, this, wxID_HELP);
-    Bind(wxEVT_MENU, &mainWindow::OnAbout, this, wxID_ABOUT);
     _currentList->Bind(wxEVT_LEFT_DOWN, &mainWindow::OnLeftDown, this);
     _currentList->Bind(wxEVT_RIGHT_DOWN, &mainWindow::OnRightDown, this);
     _deadList->Bind(wxEVT_LEFT_DOWN, &mainWindow::OnLeftDown, this);
     _deadList->Bind(wxEVT_RIGHT_DOWN, &mainWindow::OnRightDown, this);
 
-    _auto_refresh_timer = std::make_unique<wxTimer>(this, ID_AUTO_REFRESH_TIMER);
-    _key_refresh_timer = std::make_unique<wxTimer>(this, ID_KEY_REFRESH_TIMER);
-    _auto_refresh_timer->Start(_interval);
+    _key_refresh_timer = std::make_unique<wxTimer>(this, ID_EVERY_TICK_TIMER);
     _key_refresh_timer->Start(10);
     _Init();
 }
 
 mainWindow::~mainWindow()
 {
-    _auto_refresh_timer->Stop();
     _key_refresh_timer->Stop();
 }
 
@@ -217,37 +215,10 @@ void mainWindow::OnSetInterval(wxCommandEvent& event)
 {
     int interval;
     if (_intervalValue->GetValue().ToInt(&interval)) {
-        _interval = interval * 10;
-        _auto_refresh_timer->Stop();
-        _auto_refresh_timer->Start(_interval);
+        _interval = interval;
         wxMessageBox(wxString::Format(wxT("设置刷新间隔为 %ld cs成功"), interval), wxT("PvZ Animation Monitor设置刷新间隔"));
     } else
         wxMessageBox(wxT("设置刷新间隔失败"), wxT("PvZ Animation Monitor设置刷新间隔"));
-}
-
-void mainWindow::OnTimer(wxTimerEvent& event)
-{
-    // OnEveryTick()中每帧都检测了pvz进程，这里不用重复检测
-    if (_isPaused)
-        return;
-
-    if (!_AutoRefreshCheckBox->IsChecked())
-        return;
-
-    if (_chooseCurrent->IsChecked()) {
-        _currentList->Show();
-        _currentList->DeleteAllItems();
-    } else
-        _currentList->Hide();
-
-    if (_chooseDead->IsChecked()) {
-        _deadList->Show();
-        _deadList->DeleteAllItems();
-    } else
-        _deadList->Hide();
-
-    _PrintList();
-    _DisplayStatus();
 }
 
 void mainWindow::OnShowCurrenCheck(wxCommandEvent& event)
@@ -293,7 +264,6 @@ void mainWindow::_AutoFindGame()
 void mainWindow::OnChooseProcess(wxCommandEvent& event)
 {
     _key_refresh_timer->Stop();
-    _auto_refresh_timer->Stop();
     auto dlg = std::make_unique<ProcessChoose>(nullptr);
     int result = dlg->ShowModal();
     if (result == wxID_OK) {
@@ -302,39 +272,28 @@ void mainWindow::OnChooseProcess(wxCommandEvent& event)
     }
     dlg->Destroy();
     _key_refresh_timer->Start(10);
-    _auto_refresh_timer->Start(_interval);
 }
 
 void mainWindow::OnRefreshCheckBox(wxCommandEvent& event)
 {
-    if (_AutoRefreshCheckBox->IsChecked())
-        _auto_refresh_timer->Start(_interval);
-    else
-        _auto_refresh_timer->Stop();
+    _SetIntervalButton->Enable(_AutoRefreshCheckBox->IsChecked());
 }
 
 void mainWindow::OnEveryTick(wxTimerEvent& event)
 {
-    if (_SetIntervalButton->IsEnabled() != _AutoRefreshCheckBox->IsChecked())
-        _SetIntervalButton->Enable(_AutoRefreshCheckBox->IsChecked());
-
     if (!_IsValid()) {
         _AutoFindGame();
         return;
     }
+    if (!_isPaused && _AutoRefreshCheckBox->IsChecked()) {
+        _count++;
+        if (_count >= _interval) {
+            _count = 0;
+            _PrintList();
+            _DisplayStatus();
+        }
+    }
     if (GetIsKeysDown(_hWnd, _refreshKeys)) {
-        if (_chooseCurrent->IsChecked()) {
-            _currentList->Show();
-            _currentList->DeleteAllItems();
-        } else
-            _currentList->Hide();
-
-        if (_chooseDead->IsChecked()) {
-            _deadList->Show();
-            _deadList->DeleteAllItems();
-        } else
-            _deadList->Hide();
-
         _PrintList();
         _DisplayStatus();
     }
@@ -342,7 +301,6 @@ void mainWindow::OnEveryTick(wxTimerEvent& event)
 
 void mainWindow::OnClose(wxCloseEvent& event)
 {
-    _auto_refresh_timer->Stop();
     _key_refresh_timer->Stop();
     event.Skip();
 }
@@ -395,9 +353,9 @@ void mainWindow::_Init(HWND hWnd)
 void mainWindow::_DisplayStatus()
 {
     if (!_IsValid()) {
-        _NextKeyText->SetLabel("unknown");
-        _MaxSizeText->SetLabel("unknown");
-        _IndexListText->SetLabel("unknown");
+        //_NextKeyText->SetLabel("unknown");
+        //_MaxSizeText->SetLabel("unknown");
+        //_IndexListText->SetLabel("unknown");
         return;
     }
 
@@ -438,6 +396,8 @@ void mainWindow::_PrintList()
         CloseHandle(hProcess);
         return;
     }
+    _currentList->DeleteAllItems();
+    _deadList->DeleteAllItems();
     ReadProcessMemory(hProcess, (LPVOID)(aDataArray), &aReanimationArray, 4, &aBuffer);
     DWORD aArrayPtr = aReanimationArray;
     for (int i = 0; i < aMaxIndex; i++, aArrayPtr += 0xA0) {
@@ -510,9 +470,9 @@ void mainWindow::OnAbout(wxCommandEvent& event)
 {
     wxAboutDialogInfo info;
     info.SetName("PvZ Animation Monitor");
-    info.SetVersion("v1.0.2");
+    info.SetVersion("v1.0.3");
     info.SetDescription(LR"(
-日期: 2025/01/31 17:16:00
+日期: 2025/02/04 17:14:00
 工具链: Visual Studio 2022, CMake, wxWidgets 3.2.6
 鸣谢: Ghastasaucey
 所有源代码位于: )");
