@@ -1,5 +1,7 @@
 #include "mainWindow.h"
+#include "process.h"
 #include "util.h"
+
 #include <wx/aboutdlg.h>
 
 BEGIN_EVENT_TABLE(mainWindow, wxFrame)
@@ -9,17 +11,20 @@ EVT_BUTTON(ID_SET_INTERVAL, mainWindow::OnSetInterval)
 EVT_CHECKBOX(ID_AUTO_REFRESH_CHECK_BOX, mainWindow::OnRefreshCheckBox)
 EVT_MENU(ID_CHOOSE_CURRENT, mainWindow::OnShowCurrenCheck)
 EVT_MENU(ID_CHOOSE_DEAD, mainWindow::OnShowDeadCheck)
+EVT_MENU(ID_PAUSE_ON_CLICK, mainWindow::OnPauseOnClick)
 EVT_MENU(ID_SELECT_PROCESS, mainWindow::OnChooseProcess)
 EVT_MENU(wxID_HELP, mainWindow::OnHelp)
 EVT_MENU(wxID_ABOUT, mainWindow::OnAbout)
 EVT_CLOSE(mainWindow::OnClose)
 END_EVENT_TABLE()
 
-mainWindow::mainWindow(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style)
-    : wxFrame(parent, id, title, pos, size, style)
+static const wxSize ListInitSize = wxSize(650, 300);
+
+mainWindow::mainWindow(wxWindow* parent, wxWindowID id, const wxString& title, const wxSize& size, long style)
+    : wxFrame(parent, id, title, wxDefaultPosition, size, style)
 {
-    this->SetSizeHints(wxDefaultSize, wxDefaultSize);
-    this->SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHTTEXT));
+    if (!wxSystemSettings::GetAppearance().IsDark())
+        this->SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHTTEXT));
 
     _InfoBar = this->CreateStatusBar(1, wxSTB_SIZEGRIP, wxID_ANY);
 
@@ -27,81 +32,64 @@ mainWindow::mainWindow(wxWindow* parent, wxWindowID id, const wxString& title, c
 
     wxBoxSizer* KeySizer = new wxBoxSizer(wxHORIZONTAL);
 
-    wxStaticText* SetRefreshKeyText = new wxStaticText(this, wxID_ANY, wxT("设置刷新快捷键"), wxDefaultPosition, wxDefaultSize, 0);
-    SetRefreshKeyText->Wrap(-1);
-    KeySizer->Add(SetRefreshKeyText, 0, wxALL, 5);
+    KeySizer->Add(new wxStaticText(this, wxID_ANY, wxT("设置刷新快捷键")), 0, wxALL, 5);
 
-    _refresh_key_1 = new wxTextCtrl(this, ID_KEY_1, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0);
+    _refresh_key_1 = new wxTextCtrl(this, ID_KEY_1);
     KeySizer->Add(_refresh_key_1, 0, wxALL, 5);
 
-    wxStaticText* and1 = new wxStaticText(this, wxID_ANY, "+", wxDefaultPosition, wxDefaultSize, 0);
-    and1->Wrap(-1);
-    KeySizer->Add(and1, 0, wxALL, 5);
+    KeySizer->Add(new wxStaticText(this, wxID_ANY, "+"), 0, wxALL, 5);
 
-    _refresh_key_2 = new wxTextCtrl(this, ID_KEY_2, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0);
+    _refresh_key_2 = new wxTextCtrl(this, ID_KEY_2);
     KeySizer->Add(_refresh_key_2, 0, wxALL, 5);
 
-    wxStaticText* and2 = new wxStaticText(this, wxID_ANY, "+", wxDefaultPosition, wxDefaultSize, 0);
-    and2->Wrap(-1);
-    KeySizer->Add(and2, 0, wxALL, 5);
+    KeySizer->Add(new wxStaticText(this, wxID_ANY, "+"), 0, wxALL, 5);
 
-    _refresh_key_3 = new wxTextCtrl(this, ID_KEY_3, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0);
+    _refresh_key_3 = new wxTextCtrl(this, ID_KEY_3);
     KeySizer->Add(_refresh_key_3, 0, wxALL, 5);
 
-    _SetKeyButton = new wxButton(this, ID_SET_KEYS_BUTTON, wxT("设置"), wxDefaultPosition, wxDefaultSize, 0);
+    _SetKeyButton = new wxButton(this, ID_SET_KEYS_BUTTON, wxT("设置"));
     KeySizer->Add(_SetKeyButton, 0, wxALL, 5);
 
     GlobalSizer->Add(KeySizer, 1, wxEXPAND, 5);
 
     wxBoxSizer* SetIntervalSizer = new wxBoxSizer(wxHORIZONTAL);
 
-    wxStaticText* intervalLabel = new wxStaticText(this, wxID_ANY, wxT("设置刷新间隔(cs)"), wxDefaultPosition, wxDefaultSize, 0);
-    intervalLabel->Wrap(-1);
-    SetIntervalSizer->Add(intervalLabel, 0, wxALL, 5);
+    SetIntervalSizer->Add(new wxStaticText(this, wxID_ANY, wxT("设置刷新间隔(cs)")), 0, wxALL, 5);
 
-    _intervalValue = new wxTextCtrl(this, ID_INTERVAL_VALUE, "10", wxDefaultPosition, wxDefaultSize, 0);
+    _intervalValue = new wxTextCtrl(this, ID_INTERVAL_VALUE, "10");
     SetIntervalSizer->Add(_intervalValue, 0, wxALL, 5);
 
-    _SetIntervalButton = new wxButton(this, ID_SET_INTERVAL, wxT("设置"), wxDefaultPosition, wxDefaultSize, 0);
+    _SetIntervalButton = new wxButton(this, ID_SET_INTERVAL, wxT("设置"));
     SetIntervalSizer->Add(_SetIntervalButton, 0, wxALL, 5);
 
-    _AutoRefreshCheckBox = new wxCheckBox(this, ID_AUTO_REFRESH_CHECK_BOX, wxT("自动刷新"), wxDefaultPosition, wxDefaultSize, 0);
+    _AutoRefreshCheckBox = new wxCheckBox(this, ID_AUTO_REFRESH_CHECK_BOX, wxT("自动刷新"));
     SetIntervalSizer->Add(_AutoRefreshCheckBox, 0, wxALL, 5);
 
     GlobalSizer->Add(SetIntervalSizer, 1, wxEXPAND, 5);
 
     wxBoxSizer* NextKeySizer = new wxBoxSizer(wxHORIZONTAL);
 
-    wxStaticText* NextKeyStaticText = new wxStaticText(this, wxID_ANY, "Next Key:", wxDefaultPosition, wxDefaultSize, 0);
-    NextKeyStaticText->Wrap(-1);
-    NextKeySizer->Add(NextKeyStaticText, 0, wxALL, 5);
+    NextKeySizer->Add(new wxStaticText(this, wxID_ANY, "Next Key:"), 0, wxALL, 5);
 
-    _NextKeyText = new wxStaticText(this, ID_NEXT_KEY, "unknown", wxDefaultPosition, wxDefaultSize, 0);
-    _NextKeyText->Wrap(-1);
+    _NextKeyText = new wxStaticText(this, ID_NEXT_KEY, "unknown");
     NextKeySizer->Add(_NextKeyText, 0, wxALL, 5);
 
-    wxStaticText* MaxSizeStaticText = new wxStaticText(this, wxID_ANY, "Max Size:", wxDefaultPosition, wxDefaultSize, 0);
-    MaxSizeStaticText->Wrap(-1);
-    NextKeySizer->Add(MaxSizeStaticText, 0, wxALL, 5);
+    NextKeySizer->Add(new wxStaticText(this, wxID_ANY, "Max Size:"), 0, wxALL, 5);
 
-    _MaxSizeText = new wxStaticText(this, ID_MAX_SIZE, "unknown", wxDefaultPosition, wxDefaultSize, 0);
-    _MaxSizeText->Wrap(-1);
+    _MaxSizeText = new wxStaticText(this, ID_MAX_SIZE, "unknown");
     NextKeySizer->Add(_MaxSizeText, 0, wxALL, 5);
 
-    wxStaticText* IndexListStaticText = new wxStaticText(this, wxID_ANY, "Next Index List:", wxDefaultPosition, wxDefaultSize, 0);
-    IndexListStaticText->Wrap(-1);
-    NextKeySizer->Add(IndexListStaticText, 0, wxALL, 5);
+    NextKeySizer->Add(new wxStaticText(this, wxID_ANY, "Next Index List:"), 0, wxALL, 5);
 
-    _IndexListText = new wxStaticText(this, ID_INDEX_LIST, "unknown", wxDefaultPosition, wxDefaultSize, 0);
-    _IndexListText->Wrap(-1);
+    _IndexListText = new wxStaticText(this, ID_INDEX_LIST, "unknown");
     NextKeySizer->Add(_IndexListText, 0, wxALL, 5);
 
     GlobalSizer->Add(NextKeySizer, 1, wxEXPAND, 5);
 
     _currentLable = new wxStaticText(this, ID_CURRENT_TEXT, "Current Array List");
-    _currentList = new wxListCtrl(this, ID_CURRENT_LIST, wxDefaultPosition, wxSize(650, 300), wxLC_REPORT | wxLC_HRULES | wxLC_VRULES);
+    _currentList = new wxListCtrl(this, ID_CURRENT_LIST, wxDefaultPosition, ListInitSize, wxLC_REPORT | wxLC_HRULES | wxLC_VRULES);
     _deadLable = new wxStaticText(this, ID_DEAD_TEXT, "Dead Array List");
-    _deadList = new wxListCtrl(this, ID_DEAD_LIST, wxDefaultPosition, wxSize(650, 300), wxLC_REPORT | wxLC_HRULES | wxLC_VRULES);
+    _deadList = new wxListCtrl(this, ID_DEAD_LIST, wxDefaultPosition, ListInitSize, wxLC_REPORT | wxLC_HRULES | wxLC_VRULES);
 
     GlobalSizer->Add(_currentLable, 0, wxALL | wxEXPAND, 5);
     _currentList->InsertColumn(0, "Index", wxLIST_FORMAT_CENTER, 60);
@@ -110,7 +98,7 @@ mainWindow::mainWindow(wxWindow* parent, wxWindowID id, const wxString& title, c
     _currentList->InsertColumn(3, "Rate", wxLIST_FORMAT_CENTER, 75);
     _currentList->InsertColumn(4, "LoopType", wxLIST_FORMAT_CENTER, 265);
     _currentList->InsertColumn(5, "Type", wxLIST_FORMAT_CENTER, 160);
-    GlobalSizer->Add(_currentList, 1, wxEXPAND | wxALL, 5);
+    GlobalSizer->Add(_currentList, 0, wxEXPAND | wxALL, 5);
 
     GlobalSizer->Add(_deadLable, 0, wxALL | wxEXPAND, 5);
     _deadList->InsertColumn(0, "Index", wxLIST_FORMAT_CENTER, 60);
@@ -119,7 +107,7 @@ mainWindow::mainWindow(wxWindow* parent, wxWindowID id, const wxString& title, c
     _deadList->InsertColumn(3, "Rate", wxLIST_FORMAT_CENTER, 75);
     _deadList->InsertColumn(4, "LoopType", wxLIST_FORMAT_CENTER, 265);
     _deadList->InsertColumn(5, "Type", wxLIST_FORMAT_CENTER, 160);
-    GlobalSizer->Add(_deadList, 1, wxEXPAND | wxALL, 5);
+    GlobalSizer->Add(_deadList, 0, wxEXPAND | wxALL, 5);
 
     this->SetSizer(GlobalSizer);
 
@@ -149,6 +137,12 @@ mainWindow::mainWindow(wxWindow* parent, wxWindowID id, const wxString& title, c
     _chooseDead = new wxMenuItem(_SettingsMenu, ID_CHOOSE_DEAD, wxT("显示DeadArrayList"), wxT("显示/隐藏DeadArrayList"), wxITEM_CHECK);
     _SettingsMenu->Append(_chooseDead);
     _chooseDead->Check(true);
+
+    _SettingsMenu->AppendSeparator();
+
+    _pauseOnClick = new wxMenuItem(_SettingsMenu, ID_PAUSE_ON_CLICK, wxT("点击列表时暂停/恢复刷新"), wxT("自动刷新模式下，左键点击列表暂停，右键点击列表恢复刷新"), wxITEM_CHECK);
+    _SettingsMenu->Append(_pauseOnClick);
+    _pauseOnClick->Check(false);
 
     _MenuBar->Append(_SettingsMenu, wxT("设置"));
 
@@ -188,14 +182,14 @@ void mainWindow::OnSetRefreshKeys(wxCommandEvent& event)
     auto key2 = _refresh_key_2->GetValue();
     auto key3 = _refresh_key_3->GetValue();
     _refreshKeys.clear();
-    wxString info = wxT("SetRefreshKeys: 快捷键 ");
+    wxString info = wxT("快捷键 ");
     for (const auto& key : {key1, key2, key3}) {
         if (key.empty())
             continue;
 
         auto _key = key.Upper();
         if (!VirtualKeyMap.contains(_key)) {
-            wxMessageBox(wxString::Format(wxT("未知的按键 %s , 已自动忽略"), _key), wxT("快捷键绑定"), wxOK | wxICON_INFORMATION);
+            wxMessageBox(wxString::Format(wxT("未知的按键 %s , 已自动忽略。"), _key), wxT("快捷键绑定"), wxOK | wxICON_WARNING);
             continue;
         }
         _refreshKeys.push_back(VirtualKeyMap.at(_key));
@@ -203,11 +197,11 @@ void mainWindow::OnSetRefreshKeys(wxCommandEvent& event)
     }
     if (_refreshKeys.empty()) {
         info.clear();
-        wxMessageBox(wxT("快捷键绑定失败"), wxT("快捷键绑定"));
+        wxMessageBox(wxT("您尚未输入任何按键，快捷键绑定失败！"), wxT("快捷键绑定"), wxOK | wxICON_ERROR);
         return;
     }
 
-    info += wxT(" 绑定成功");
+    info += wxT(" 绑定成功。");
     SetStatusText(info);
 }
 
@@ -215,32 +209,64 @@ void mainWindow::OnSetInterval(wxCommandEvent& event)
 {
     int interval;
     if (_intervalValue->GetValue().ToInt(&interval)) {
-        _interval = interval;
-        wxMessageBox(wxString::Format(wxT("设置刷新间隔为 %ld cs成功"), interval), wxT("PvZ Animation Monitor设置刷新间隔"));
+        if (interval >= 1) {
+            _interval = interval;
+            wxMessageBox(wxString::Format(wxT("设置刷新间隔为 %ld cs成功。"), interval), wxT("PvZ Animation Monitor设置刷新间隔"), wxOK | wxICON_INFORMATION);
+        } else {
+            wxMessageBox(wxString::Format(wxT("设置刷新间隔失败，刷新间隔应为 ≥ 1的整数，当前您填入的值为 %ld cs"), interval), wxT("PvZ Animation Monitor设置刷新间隔"), wxOK | wxICON_ERROR);
+        }
     } else
-        wxMessageBox(wxT("设置刷新间隔失败"), wxT("PvZ Animation Monitor设置刷新间隔"));
+        wxMessageBox(wxT("设置刷新间隔失败"), wxT("PvZ Animation Monitor设置刷新间隔"), wxOK | wxICON_ERROR);
 }
 
 void mainWindow::OnShowCurrenCheck(wxCommandEvent& event)
 {
     if (_chooseCurrent->IsChecked()) {
-        _currentLable->SetLabel(wxT("Current Array List"));
+        if (!_deadList->IsShown()) {
+            GetSizer()->SetItemMinSize(_currentList, 650, 600);
+        }
+        _currentLable->SetLabel("Current Array List");
         _currentList->Show();
     } else {
         _currentLable->SetLabel(wxT("Current Array List已隐藏"));
         _currentList->Hide();
+        if (_deadList->IsShown()) {
+            GetSizer()->SetItemMinSize(_deadList, 650, 600);
+        }
     }
+    if (_deadList->IsShown() && _currentList->IsShown()) {
+        GetSizer()->SetItemMinSize(_currentList, ListInitSize);
+        GetSizer()->SetItemMinSize(_deadList, ListInitSize);
+    }
+    this->Layout();
 }
 
 void mainWindow::OnShowDeadCheck(wxCommandEvent& event)
 {
     if (_chooseDead->IsChecked()) {
-        _deadLable->SetLabel(wxT("Dead Array List"));
+        if (!_currentList->IsShown()) {
+            GetSizer()->SetItemMinSize(_deadList, 650, 600);
+        }
+        _deadLable->SetLabel("Dead Array List");
         _deadList->Show();
     } else {
+        if (_currentList->IsShown()) {
+            GetSizer()->SetItemMinSize(_currentList, 650, 600);
+        }
         _deadLable->SetLabel(wxT("Dead Array List已隐藏"));
         _deadList->Hide();
     }
+    if (_deadList->IsShown() && _currentList->IsShown()) {
+        GetSizer()->SetItemMinSize(_currentList, ListInitSize);
+        GetSizer()->SetItemMinSize(_deadList, ListInitSize);
+    }
+    this->Layout();
+}
+
+void mainWindow::OnPauseOnClick(wxCommandEvent& event)
+{
+    if (!_pauseOnClick->IsChecked() && _isPaused)
+        _isPaused = false;
 }
 
 void mainWindow::_AutoFindGame()
@@ -256,7 +282,7 @@ void mainWindow::_AutoFindGame()
 
     if (IsPvZProcess(hWnd)) {
         _Init(hWnd);
-        wxMessageBox(wxT("已找到PvZ进程"), wxT("PvZ Animation Monitor自动寻找进程"));
+        wxMessageBox(wxT("已找到PvZ进程"), wxT("PvZ Animation Monitor自动寻找进程"), wxOK | wxICON_INFORMATION);
         _InfoBar->SetStatusText(wxT("已找到PvZ进程"));
     }
 }
@@ -268,7 +294,7 @@ void mainWindow::OnChooseProcess(wxCommandEvent& event)
     int result = dlg->ShowModal();
     if (result == wxID_OK) {
         _Init(dlg->GetSelectedHWND());
-        wxMessageBox(wxT("已找到PvZ进程"), wxT("PvZ Animation Monitor选择进程"));
+        wxMessageBox(wxT("已找到PvZ进程"), wxT("PvZ Animation Monitor选择进程"), wxOK | wxICON_INFORMATION);
     }
     dlg->Destroy();
     _key_refresh_timer->Start(10);
@@ -307,6 +333,10 @@ void mainWindow::OnClose(wxCloseEvent& event)
 
 void mainWindow::OnLeftDown(wxMouseEvent& event)
 {
+    if (!_pauseOnClick->IsChecked()) {
+        _isPaused = false;
+        return;
+    }
     wxListCtrl* listCtrl = dynamic_cast<wxListCtrl*>(event.GetEventObject());
     if (listCtrl) {
         auto item = this->HitTest(event.GetPosition());
@@ -318,6 +348,10 @@ void mainWindow::OnLeftDown(wxMouseEvent& event)
 
 void mainWindow::OnRightDown(wxMouseEvent& event)
 {
+    if (!_pauseOnClick->IsChecked()) {
+        _isPaused = false;
+        return;
+    }
     wxListCtrl* listCtrl = dynamic_cast<wxListCtrl*>(event.GetEventObject());
     if (listCtrl) {
         auto item = this->HitTest(event.GetPosition());
@@ -352,12 +386,8 @@ void mainWindow::_Init(HWND hWnd)
 
 void mainWindow::_DisplayStatus()
 {
-    if (!_IsValid()) {
-        //_NextKeyText->SetLabel("unknown");
-        //_MaxSizeText->SetLabel("unknown");
-        //_IndexListText->SetLabel("unknown");
+    if (!_IsValid())
         return;
-    }
 
     ReadProcessMemory(hProcess, (LPVOID)(aDataArray + 0x14), &aNextKey, 4, &aBuffer);
     ReadProcessMemory(hProcess, (LPVOID)(aDataArray + 0x4), &aMaxIndex, 4, &aBuffer);
@@ -448,7 +478,8 @@ bool mainWindow::_DataArrayGetNextIndex(DWORD& theCurrent, DWORD theMax)
 
 void mainWindow::OnHelp(wxCommandEvent& event)
 {
-    wxMessageBox(LR"(为pvz英文原版动画监测写的GUI界面，添加了若干小功能：
+    wxMessageBox(
+        LR"(为pvz英文原版动画监测写的GUI界面，添加了若干小功能：
 1.手动选择进程，用于支持多开pvz，不支持大部分改版及中文版，年度版（即使找到了游戏也不能保证兼容）；
 
 2.选择显示Current和Dead列表，默认二者均显示，可在程序菜单栏上的“设置”中取消勾选；
@@ -460,20 +491,22 @@ void mainWindow::OnHelp(wxCommandEvent& event)
   例如想绑定Ctrl+Shift+Z，即按下Ctrl+Shift+Z时刷新一次列表，三个输入框从左到右依次键入ctrl, shift, z即可；
   注意组合键最多绑定三个，三个输入框不必全填满, 当且仅当pvz窗口为顶层窗口时按下按键才会刷新列表。
 
-5.自动刷新模式下，当鼠标左键在两个列表内任意位置点击时，暂停刷新；当鼠标右键在两个列表内任意位置点击时，恢复刷新；
+5.点击列表时暂停/恢复刷新：自动刷新模式下，当鼠标左键在两个列表内任意位置点击时，暂停刷新；
+  当鼠标右键在两个列表内任意位置点击时，恢复刷新；
   按键刷新不受影响。
+  该功能可在程序菜单栏上的“设置”中选择是否启用。
 )",
-        wxT("PvZ Animation Monitor帮助"));
+        wxT("PvZ Animation Monitor帮助"), wxOK | wxICON_INFORMATION);
 }
 
 void mainWindow::OnAbout(wxCommandEvent& event)
 {
     wxAboutDialogInfo info;
     info.SetName("PvZ Animation Monitor");
-    info.SetVersion("v1.0.3");
+    info.SetVersion("v1.0.4");
     info.SetDescription(LR"(
-日期: 2025/02/04 17:14:00
-工具链: Visual Studio 2022, CMake, wxWidgets 3.2.6
+日期: 2025/07/16 12:50:19
+开发工具: Visual Studio 2022, CMake, wxWidgets 3.3.0
 鸣谢: Ghastasaucey
 所有源代码位于: )");
     info.SetLicence(LR"(

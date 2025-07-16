@@ -16,6 +16,21 @@
 
 bool IsPvZProcess(HWND hWnd);
 
+template <typename T, typename... Args>
+static T ReadMemory(HANDLE hProcess, Args... args)
+{
+    std::initializer_list<uintptr_t> lst = {static_cast<uintptr_t>(args)...};
+    uintptr_t buff = 0;
+    T result = T();
+    for (auto it = lst.begin(); it != lst.end(); ++it) {
+        if (it != lst.end() - 1)
+            ReadProcessMemory(hProcess, (const void*)(buff + *it), &buff, sizeof(buff), nullptr);
+        else
+            ReadProcessMemory(hProcess, (const void*)(buff + *it), &result, sizeof(result), nullptr);
+    }
+    return result;
+}
+
 class ProcessChoose : public wxDialog {
 public:
     struct ProcessInfo {
@@ -28,21 +43,6 @@ public:
     ProcessChoose(wxWindow* parent);
 
     ~ProcessChoose();
-
-    template <typename T, typename... Args>
-    static T ReadMemory(HANDLE hProcess, Args... args)
-    {
-        std::initializer_list<uintptr_t> lst = {static_cast<uintptr_t>(args)...};
-        uintptr_t buff = 0;
-        T result = T();
-        for (auto it = lst.begin(); it != lst.end(); ++it) {
-            if (it != lst.end() - 1)
-                ReadProcessMemory(hProcess, (const void*)(buff + *it), &buff, sizeof(buff), nullptr);
-            else
-                ReadProcessMemory(hProcess, (const void*)(buff + *it), &result, sizeof(result), nullptr);
-        }
-        return result;
-    }
 
     HWND GetSelectedHWND() { return _targetProcess.hWnd; }
 

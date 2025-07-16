@@ -9,8 +9,7 @@
 #define __MAINWINDOW_H__
 
 #include <wx/wx.h>
-
-#include "process.h"
+#include <wx/listctrl.h>
 
 class mainWindow : public wxFrame {
 private:
@@ -18,6 +17,7 @@ private:
     void OnSetInterval(wxCommandEvent& event);
     void OnShowCurrenCheck(wxCommandEvent& event);
     void OnShowDeadCheck(wxCommandEvent& event);
+    void OnPauseOnClick(wxCommandEvent& event);
     void OnRefreshCheckBox(wxCommandEvent& event);
     void OnChooseProcess(wxCommandEvent& event);
     void OnEveryTick(wxTimerEvent& event);
@@ -59,6 +59,7 @@ private:
     wxStaticText* _deadLable;
     wxMenuItem* _chooseCurrent;
     wxMenuItem* _chooseDead;
+    wxMenuItem* _pauseOnClick;
 
     std::unique_ptr<wxTimer> _key_refresh_timer;
 
@@ -75,7 +76,7 @@ private:
     bool aIsDead[1024];
 
 public:
-    mainWindow(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style);
+    mainWindow(wxWindow* parent, wxWindowID id, const wxString& title, const wxSize& size, long style);
 
     ~mainWindow();
 
@@ -101,6 +102,7 @@ enum {
     ID_DEAD_TEXT,
     ID_CHOOSE_CURRENT,
     ID_CHOOSE_DEAD,
+    ID_PAUSE_ON_CLICK,
 };
 
 #endif //!__MAINWINDOW_H__

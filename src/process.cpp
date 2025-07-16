@@ -30,7 +30,7 @@ bool IsPvZProcess(HWND hWnd)
     if (handle == NULL)
         return false;
 
-    if (ProcessChoose::ReadMemory<int>(handle, 0x45DC55) == 300 && ProcessChoose::ReadMemory<int>(handle, 0x45E445) == 4000
+    if (ReadMemory<int>(handle, 0x45DC55) == 300 && ReadMemory<int>(handle, 0x45E445) == 4000
         && GetWindowTitle(hWnd) == "Plants vs. Zombies") {
         CloseHandle(handle);
         return true;
@@ -63,13 +63,11 @@ BOOL CALLBACK ProcessChoose::_EnumWindowsProc(HWND hWnd, LPARAM lParam)
     info.windowTitle = GetWindowTitle(hWnd);
     info.hWnd = hWnd;
 
-    if (!windowEnum->_windowsInfo.empty())
-        for (const auto& [id, name, title, hwnd] : windowEnum->_windowsInfo) {
-            if (id == processId && name == processName && title == info.windowTitle)
-                return TRUE;
-        }
+    if (info.windowTitle.empty() || // pvz窗口标题不可能为空
+        !IsWindowVisible(hWnd))     // pvz窗口要可见
+        return TRUE;
 
-    windowEnum->_windowsInfo.push_back(info);
+    windowEnum->_windowsInfo.emplace_back(info);
 
     return TRUE;
 }
@@ -104,9 +102,9 @@ ProcessChoose::ProcessChoose(wxWindow* parent)
 
     okButton->Bind(wxEVT_BUTTON, &ProcessChoose::OnItemSelected, this, okButton->GetId());
     refreshButton->Bind(
-        wxEVT_BUTTON, [=, this](wxCommandEvent&) { _RefreshList(); }, refreshButton->GetId());
+        wxEVT_BUTTON, [=](wxCommandEvent&) { _RefreshList(); }, refreshButton->GetId());
     cancelButton->Bind(
-        wxEVT_BUTTON, [=, this](wxCommandEvent&) { wxDialog::EndModal(wxID_CANCEL); }, cancelButton->GetId());
+        wxEVT_BUTTON, [=](wxCommandEvent&) { wxDialog::EndModal(wxID_CANCEL); }, cancelButton->GetId());
 }
 
 ProcessChoose::~ProcessChoose()
@@ -137,13 +135,7 @@ void ProcessChoose::_RefreshList()
     EnumWindows(_EnumWindowsProc, (LPARAM)this);
     auto processes = _windowsInfo;
     std::ranges::sort(processes, [=](const auto& process1, const auto& process2) {
-        if (IsPvZProcess(process1.hWnd)) // pvz窗口优先
-            return !IsPvZProcess(process2.hWnd);
-
-        if (IsWindowVisible(process1.hWnd))
-            return !IsWindowVisible(process2.hWnd);
-
-        return process1.windowTitle != wxEmptyString && process2.windowTitle == wxEmptyString;
+        return IsPvZProcess(process1.hWnd) && !IsPvZProcess(process2.hWnd);
     });
     _processList->DeleteAllItems();
     _processMap.clear();
