@@ -8,8 +8,8 @@
 #ifndef __MAINWINDOW_H__
 #define __MAINWINDOW_H__
 
-#include <wx/wx.h>
 #include <wx/listctrl.h>
+#include <wx/wx.h>
 
 class mainWindow : public wxFrame {
 private:
@@ -26,6 +26,10 @@ private:
     void OnAbout(wxCommandEvent& event);
     void OnLeftDown(wxMouseEvent& event);
     void OnRightDown(wxMouseEvent& event);
+
+    //DPI相关函数
+    double GetDPIScaleFactor() const;
+    int FromDIP(int value) const;
 
     void _AutoFindGame();
     void _OutReanimation(int index, DWORD& theAddress, wxListCtrl* list);
@@ -62,6 +66,8 @@ private:
     wxMenuItem* _pauseOnClick;
 
     std::unique_ptr<wxTimer> _key_refresh_timer;
+    wxSize _listInitSize;
+    wxSize _listExpandSize;
 
     std::vector<int> _refreshKeys;
     int _interval = 10;

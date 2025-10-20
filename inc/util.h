@@ -13,7 +13,7 @@
 #include <unordered_map>
 
 // 虚拟键码表
-static const std::unordered_map<const char*, int> VirtualKeyMap = {
+static const std::unordered_map<wxString, int> VirtualKeyMap = {
     {"LBUTTON", VK_LBUTTON},
     {"RBUTTON", VK_RBUTTON},
     {"CANCEL", VK_CANCEL},

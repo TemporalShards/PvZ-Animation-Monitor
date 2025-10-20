@@ -18,11 +18,24 @@ EVT_MENU(wxID_ABOUT, mainWindow::OnAbout)
 EVT_CLOSE(mainWindow::OnClose)
 END_EVENT_TABLE()
 
-static const wxSize ListInitSize = wxSize(650, 300);
-
 mainWindow::mainWindow(wxWindow* parent, wxWindowID id, const wxString& title, const wxSize& size, long style)
     : wxFrame(parent, id, title, wxDefaultPosition, size, style)
 {
+#ifdef __WXMSW__
+    HMODULE hUser32 = LoadLibraryA("user32.dll");
+    if (hUser32) {
+        auto setProcessDpiAwarenessContext = (decltype(SetProcessDpiAwarenessContext)*)GetProcAddress(hUser32, "SetProcessDpiAwarenessContext");
+        if (setProcessDpiAwarenessContext) {
+            setProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+        }
+        FreeLibrary(hUser32);
+    }
+#endif
+
+    double dpiScale = GetDPIScaleFactor();
+    _listInitSize = wxSize(650 * dpiScale, 300 * dpiScale);
+    _listExpandSize= wxSize(650 * dpiScale, 600 * dpiScale);
+
     if (!wxSystemSettings::GetAppearance().IsDark())
         this->SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHTTEXT));
 
@@ -32,82 +45,88 @@ mainWindow::mainWindow(wxWindow* parent, wxWindowID id, const wxString& title, c
 
     wxBoxSizer* KeySizer = new wxBoxSizer(wxHORIZONTAL);
 
-    KeySizer->Add(new wxStaticText(this, wxID_ANY, wxT("设置刷新快捷键")), 0, wxALL, 5);
+    KeySizer->Add(new wxStaticText(this, wxID_ANY, wxT("设置刷新快捷键")), 0, wxALL, FromDIP(5));
 
     _refresh_key_1 = new wxTextCtrl(this, ID_KEY_1);
-    KeySizer->Add(_refresh_key_1, 0, wxALL, 5);
+    KeySizer->Add(_refresh_key_1, 0, wxALL, FromDIP(5));
 
-    KeySizer->Add(new wxStaticText(this, wxID_ANY, "+"), 0, wxALL, 5);
+    KeySizer->Add(new wxStaticText(this, wxID_ANY, "+"), 0, wxALL, FromDIP(5));
 
     _refresh_key_2 = new wxTextCtrl(this, ID_KEY_2);
-    KeySizer->Add(_refresh_key_2, 0, wxALL, 5);
+    KeySizer->Add(_refresh_key_2, 0, wxALL, FromDIP(5));
 
-    KeySizer->Add(new wxStaticText(this, wxID_ANY, "+"), 0, wxALL, 5);
+    KeySizer->Add(new wxStaticText(this, wxID_ANY, "+"), 0, wxALL, FromDIP(5));
 
     _refresh_key_3 = new wxTextCtrl(this, ID_KEY_3);
-    KeySizer->Add(_refresh_key_3, 0, wxALL, 5);
+    KeySizer->Add(_refresh_key_3, 0, wxALL, FromDIP(5));
 
     _SetKeyButton = new wxButton(this, ID_SET_KEYS_BUTTON, wxT("设置"));
-    KeySizer->Add(_SetKeyButton, 0, wxALL, 5);
+    KeySizer->Add(_SetKeyButton, 0, wxALL, FromDIP(5));
 
-    GlobalSizer->Add(KeySizer, 1, wxEXPAND, 5);
+    GlobalSizer->Add(KeySizer, 1, wxEXPAND, FromDIP(5));
 
     wxBoxSizer* SetIntervalSizer = new wxBoxSizer(wxHORIZONTAL);
 
-    SetIntervalSizer->Add(new wxStaticText(this, wxID_ANY, wxT("设置刷新间隔(cs)")), 0, wxALL, 5);
+    SetIntervalSizer->Add(new wxStaticText(this, wxID_ANY, wxT("设置刷新间隔(cs)")), 0, wxALL, FromDIP(5));
 
     _intervalValue = new wxTextCtrl(this, ID_INTERVAL_VALUE, "10");
-    SetIntervalSizer->Add(_intervalValue, 0, wxALL, 5);
+    SetIntervalSizer->Add(_intervalValue, 0, wxALL, FromDIP(5));
 
     _SetIntervalButton = new wxButton(this, ID_SET_INTERVAL, wxT("设置"));
-    SetIntervalSizer->Add(_SetIntervalButton, 0, wxALL, 5);
+    SetIntervalSizer->Add(_SetIntervalButton, 0, wxALL, FromDIP(5));
 
     _AutoRefreshCheckBox = new wxCheckBox(this, ID_AUTO_REFRESH_CHECK_BOX, wxT("自动刷新"));
-    SetIntervalSizer->Add(_AutoRefreshCheckBox, 0, wxALL, 5);
+    SetIntervalSizer->Add(_AutoRefreshCheckBox, 0, wxALL, FromDIP(5));
 
-    GlobalSizer->Add(SetIntervalSizer, 1, wxEXPAND, 5);
+    GlobalSizer->Add(SetIntervalSizer, 1, wxEXPAND, FromDIP(5));
 
     wxBoxSizer* NextKeySizer = new wxBoxSizer(wxHORIZONTAL);
 
-    NextKeySizer->Add(new wxStaticText(this, wxID_ANY, "Next Key:"), 0, wxALL, 5);
+    NextKeySizer->Add(new wxStaticText(this, wxID_ANY, "Next Key:"), 0, wxALL, FromDIP(5));
 
     _NextKeyText = new wxStaticText(this, ID_NEXT_KEY, "unknown");
-    NextKeySizer->Add(_NextKeyText, 0, wxALL, 5);
+    NextKeySizer->Add(_NextKeyText, 0, wxALL, FromDIP(5));
 
-    NextKeySizer->Add(new wxStaticText(this, wxID_ANY, "Max Size:"), 0, wxALL, 5);
+    NextKeySizer->Add(new wxStaticText(this, wxID_ANY, "Max Size:"), 0, wxALL, FromDIP(5));
 
     _MaxSizeText = new wxStaticText(this, ID_MAX_SIZE, "unknown");
-    NextKeySizer->Add(_MaxSizeText, 0, wxALL, 5);
+    NextKeySizer->Add(_MaxSizeText, 0, wxALL, FromDIP(5));
 
-    NextKeySizer->Add(new wxStaticText(this, wxID_ANY, "Next Index List:"), 0, wxALL, 5);
+    NextKeySizer->Add(new wxStaticText(this, wxID_ANY, "Next Index List:"), 0, wxALL, FromDIP(5));
 
     _IndexListText = new wxStaticText(this, ID_INDEX_LIST, "unknown");
-    NextKeySizer->Add(_IndexListText, 0, wxALL, 5);
+    NextKeySizer->Add(_IndexListText, 0, wxALL, FromDIP(5));
 
-    GlobalSizer->Add(NextKeySizer, 1, wxEXPAND, 5);
+    GlobalSizer->Add(NextKeySizer, 1, wxEXPAND, FromDIP(5));
 
     _currentLable = new wxStaticText(this, ID_CURRENT_TEXT, "Current Array List");
-    _currentList = new wxListCtrl(this, ID_CURRENT_LIST, wxDefaultPosition, ListInitSize, wxLC_REPORT | wxLC_HRULES | wxLC_VRULES);
+    _currentList = new wxListCtrl(this, ID_CURRENT_LIST, wxDefaultPosition, _listInitSize, wxLC_REPORT | wxLC_HRULES | wxLC_VRULES);
     _deadLable = new wxStaticText(this, ID_DEAD_TEXT, "Dead Array List");
-    _deadList = new wxListCtrl(this, ID_DEAD_LIST, wxDefaultPosition, ListInitSize, wxLC_REPORT | wxLC_HRULES | wxLC_VRULES);
+    _deadList = new wxListCtrl(this, ID_DEAD_LIST, wxDefaultPosition, _listInitSize, wxLC_REPORT | wxLC_HRULES | wxLC_VRULES);
 
-    GlobalSizer->Add(_currentLable, 0, wxALL | wxEXPAND, 5);
-    _currentList->InsertColumn(0, "Index", wxLIST_FORMAT_CENTER, 60);
-    _currentList->InsertColumn(1, "ID", wxLIST_FORMAT_CENTER, 65);
-    _currentList->InsertColumn(2, "Time", wxLIST_FORMAT_CENTER, 75);
-    _currentList->InsertColumn(3, "Rate", wxLIST_FORMAT_CENTER, 75);
-    _currentList->InsertColumn(4, "LoopType", wxLIST_FORMAT_CENTER, 265);
-    _currentList->InsertColumn(5, "Type", wxLIST_FORMAT_CENTER, 160);
-    GlobalSizer->Add(_currentList, 0, wxEXPAND | wxALL, 5);
+    GlobalSizer->Add(_currentLable, 0, wxALL | wxEXPAND, FromDIP(5));
 
-    GlobalSizer->Add(_deadLable, 0, wxALL | wxEXPAND, 5);
-    _deadList->InsertColumn(0, "Index", wxLIST_FORMAT_CENTER, 60);
-    _deadList->InsertColumn(1, "ID", wxLIST_FORMAT_CENTER, 65);
-    _deadList->InsertColumn(2, "Time", wxLIST_FORMAT_CENTER, 75);
-    _deadList->InsertColumn(3, "Rate", wxLIST_FORMAT_CENTER, 75);
-    _deadList->InsertColumn(4, "LoopType", wxLIST_FORMAT_CENTER, 265);
-    _deadList->InsertColumn(5, "Type", wxLIST_FORMAT_CENTER, 160);
-    GlobalSizer->Add(_deadList, 0, wxEXPAND | wxALL, 5);
+    // 使用动态计算的列宽
+    int col0 = FromDIP(60), col1 = FromDIP(65), col2 = FromDIP(75),
+        col3 = FromDIP(75), col4 = FromDIP(265), col5 = FromDIP(160);
+
+    _currentList->InsertColumn(0, "Index", wxLIST_FORMAT_CENTER, col0);
+    _currentList->InsertColumn(1, "ID", wxLIST_FORMAT_CENTER, col1);
+    _currentList->InsertColumn(2, "Time", wxLIST_FORMAT_CENTER, col2);
+    _currentList->InsertColumn(3, "Rate", wxLIST_FORMAT_CENTER, col3);
+    _currentList->InsertColumn(4, "LoopType", wxLIST_FORMAT_CENTER, col4);
+    _currentList->InsertColumn(5, "Type", wxLIST_FORMAT_CENTER, col5);
+    GlobalSizer->Add(_currentList, 0, wxEXPAND | wxALL, FromDIP(5));
+
+    GlobalSizer->Add(_deadLable, 0, wxALL | wxEXPAND, FromDIP(5));
+
+    _deadList->InsertColumn(0, "Index", wxLIST_FORMAT_CENTER, col0);
+    _deadList->InsertColumn(1, "ID", wxLIST_FORMAT_CENTER, col1);
+    _deadList->InsertColumn(2, "Time", wxLIST_FORMAT_CENTER, col2);
+    _deadList->InsertColumn(3, "Rate", wxLIST_FORMAT_CENTER, col3);
+    _deadList->InsertColumn(4, "LoopType", wxLIST_FORMAT_CENTER, col4);
+    _deadList->InsertColumn(5, "Type", wxLIST_FORMAT_CENTER, col5);
+    GlobalSizer->Add(_deadList, 0, wxEXPAND | wxALL, FromDIP(5));
 
     this->SetSizer(GlobalSizer);
 
@@ -176,6 +195,25 @@ mainWindow::~mainWindow()
     _key_refresh_timer->Stop();
 }
 
+// 添加DPI缩放因子计算函数
+double mainWindow::GetDPIScaleFactor() const
+{
+    // 获取屏幕DPI
+    wxSize dpi = wxGetDisplayPPI();
+    // 标准DPI是96，计算缩放因子
+    return dpi.x / 96.0;
+}
+
+// 添加DPI转换函数（兼容旧版本wxWidgets）
+int mainWindow::FromDIP(int value) const
+{
+#if wxCHECK_VERSION(3, 1, 0)
+    return wxWindow::FromDIP(value, this);
+#else
+    return value * GetDPIScaleFactor();
+#endif
+}
+
 void mainWindow::OnSetRefreshKeys(wxCommandEvent& event)
 {
     auto key1 = _refresh_key_1->GetValue();
@@ -223,7 +261,7 @@ void mainWindow::OnShowCurrenCheck(wxCommandEvent& event)
 {
     if (_chooseCurrent->IsChecked()) {
         if (!_deadList->IsShown()) {
-            GetSizer()->SetItemMinSize(_currentList, 650, 600);
+            GetSizer()->SetItemMinSize(_currentList, _listExpandSize);
         }
         _currentLable->SetLabel("Current Array List");
         _currentList->Show();
@@ -231,12 +269,12 @@ void mainWindow::OnShowCurrenCheck(wxCommandEvent& event)
         _currentLable->SetLabel(wxT("Current Array List已隐藏"));
         _currentList->Hide();
         if (_deadList->IsShown()) {
-            GetSizer()->SetItemMinSize(_deadList, 650, 600);
+            GetSizer()->SetItemMinSize(_deadList, _listExpandSize);
         }
     }
     if (_deadList->IsShown() && _currentList->IsShown()) {
-        GetSizer()->SetItemMinSize(_currentList, ListInitSize);
-        GetSizer()->SetItemMinSize(_deadList, ListInitSize);
+        GetSizer()->SetItemMinSize(_currentList, _listInitSize);
+        GetSizer()->SetItemMinSize(_deadList, _listInitSize);
     }
     this->Layout();
 }
@@ -245,20 +283,20 @@ void mainWindow::OnShowDeadCheck(wxCommandEvent& event)
 {
     if (_chooseDead->IsChecked()) {
         if (!_currentList->IsShown()) {
-            GetSizer()->SetItemMinSize(_deadList, 650, 600);
+            GetSizer()->SetItemMinSize(_deadList, _listExpandSize);
         }
         _deadLable->SetLabel("Dead Array List");
         _deadList->Show();
     } else {
         if (_currentList->IsShown()) {
-            GetSizer()->SetItemMinSize(_currentList, 650, 600);
+            GetSizer()->SetItemMinSize(_currentList, _listExpandSize);
         }
         _deadLable->SetLabel(wxT("Dead Array List已隐藏"));
         _deadList->Hide();
     }
     if (_deadList->IsShown() && _currentList->IsShown()) {
-        GetSizer()->SetItemMinSize(_currentList, ListInitSize);
-        GetSizer()->SetItemMinSize(_deadList, ListInitSize);
+        GetSizer()->SetItemMinSize(_currentList, _listInitSize);
+        GetSizer()->SetItemMinSize(_deadList, _listInitSize);
     }
     this->Layout();
 }
@@ -503,10 +541,10 @@ void mainWindow::OnAbout(wxCommandEvent& event)
 {
     wxAboutDialogInfo info;
     info.SetName("PvZ Animation Monitor");
-    info.SetVersion("v1.0.4");
+    info.SetVersion("v1.0.5");
     info.SetDescription(LR"(
-日期: 2025/07/16 12:50:19
-开发工具: Visual Studio 2022, CMake, wxWidgets 3.3.0
+日期: 2025/10/20 16:28:35
+开发工具: Clang 20, CMake, wxWidgets 3.3.1
 鸣谢: Ghastasaucey
 所有源代码位于: )");
     info.SetLicence(LR"(
